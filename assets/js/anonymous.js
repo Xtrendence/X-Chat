@@ -68,6 +68,7 @@ document.addEventListener("DOMContentLoaded", function(e) {
 			var from = "others";
 			list.innerHTML += '<div class="chat-bubble-wrapper ' + from + ' noselect"><div class="chat-bubble" id="' + data.id + '"><span>' + decrypt_text(data.text.recipient, private_key) + '</span><button class="chat-bubble-time">' + time + '</button></div></div>';
 		}
+		list.scrollTop = list.scrollHeight;
 	});
 	socket.on("logout", function() {
 		logout();

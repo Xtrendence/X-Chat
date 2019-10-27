@@ -132,6 +132,10 @@ button, input {
 	left:92px;
 	width:calc(100% - 184px);
 	height:calc(100% - 70px);
+	overflow-x:hidden;
+	overflow-y:scroll;
+	scroll-behavior:smooth;
+	-webkit-overflow-scrolling:touch;
 }
 .chat-bubble-wrapper {
 	font-size:0;
