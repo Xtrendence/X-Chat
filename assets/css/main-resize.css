@@ -1,0 +1,63 @@
+@media screen and (max-width:680px) {
+	.navbar-item.title.recipient {
+		left:0;
+	}
+	.conversation-list {
+		width:100%;
+	}
+	.messages-list {
+		width:100%;
+		left:0;
+		display:none;
+	}
+	.search-bar {
+		width:100%;
+		left:0;
+	}
+	.chat-input-wrapper {
+		width:100%;
+		left:0;
+		display:none;
+	}
+	.loading-overlay {
+		width:100%;
+		left:0;
+	}
+}
+@media screen and (max-width:480px) {
+	.settings-wrapper {
+		width:350px;
+		left:calc(50% - 350px / 2);
+	}
+}
+@media screen and (max-width:430px) {
+	.more-menu {
+		right:66px;
+		width:220px;
+		height:300px;
+	}
+	.more-arrow {
+		top:57px;
+		right:105px;
+	}
+	.more-block {
+		width:50%;
+	}
+	.more-block:nth-of-type(even) {
+		background:none;
+	}
+	.more-block:nth-of-type(1) {
+		background:rgb(40,40,40);
+	}
+	.more-block:nth-of-type(4) {
+		background:rgb(40,40,40);
+	}
+	.more-block:nth-of-type(5) {
+		background:rgb(40,40,40);
+	}
+}
+@media screen and (max-width:380px) {
+	.chat-bubble-author {
+		width:100px;
+	}
+}

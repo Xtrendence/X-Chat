@@ -1,0 +1,18 @@
+@media screen and (max-width:1050px) {
+	.privacy-text.conversation-id {
+		display:none;
+	}
+}
+@media screen and (max-width:500px) {
+	.loading-overlay span {
+		width:100%;
+		left:0;
+		top:calc(50% - 40px / 2);
+	}
+	.messages-list {
+		width:100%;
+		left:0;
+		top:72px;
+		height:calc(100% - 70px - 72px);
+	}
+}
