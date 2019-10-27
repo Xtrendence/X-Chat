@@ -8,3 +8,7 @@ If you use the "Anonymous Chat" feature, absolutely nothing is stored by the ser
 The normal chat is more like your generic chat application. Messages are still encrypted on the client side with RSA-2048, and users' private keys are encrypted with AES-256-CTR, which uses the SHA512 hash of the user's password as the decryption key. The user's password is stored using BCrypt with 10 salt rounds. In short, unless the server code is modified or something to capture the user's private key, there's absolutely no way to get the content of a conversation. The user's settings, contacts, and other data are stored in JSON format in text files for easy access. These are stored in plaintext, but it'd be easy to encrypt them with the user's password and AES. If you wish to make that a reality, remember, there are already functions written to make it easier. You can use the "aes_encrypt(plaintext, password)" and "aes_decrypt(encrypted, password)" functions that I wrote to easily encrypt/decrypt whatever you want.
 
 There might be some bugs or some unexpected behavior, but this is to be expected, this is, after all, my first NodeJS project. If you try to break the app, you'll very likely succeed. There aren't as many validation checks and such as I'd like, but there are enough to protect user's accounts and conversations. I apologize in advance if anything does go wrong though.
+
+# To Do
+
+Create an ElectronJS version of X:/Chat.
