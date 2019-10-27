@@ -11,6 +11,6 @@ There might be some bugs or some unexpected behavior, but this is to be expected
 
 # To Do
 
-Add comments to the code.
+- [ ] Add comments to the code.
 
-Create an ElectronJS version of X:/Chat.
+- [ ] Create an ElectronJS version of X:/Chat.
