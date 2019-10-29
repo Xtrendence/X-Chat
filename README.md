@@ -13,7 +13,7 @@ There might be some bugs or some unexpected behavior, but this is to be expected
 
 ### To Do
 
-- [ ] Add comments to the code.
+- [X] Add comments to the code.
 
 - [ ] Add the option to store anonymous chat messages in local storage.
 
