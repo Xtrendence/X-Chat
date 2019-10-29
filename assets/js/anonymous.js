@@ -1,4 +1,5 @@
 document.addEventListener("DOMContentLoaded", function(e) {
+	// Connect to Socket.IO.
 	var socket = io.connect(window.location.href.replace("/anonymous", ""), { reconnection:true, reconnectionDelay:1000, reconnectionDelayMax:5000, reconnectionAttempts:99999 });
 	initialize();
 	// Socket.io functionality.
@@ -6,6 +7,7 @@ document.addEventListener("DOMContentLoaded", function(e) {
 		socket.emit("fetch-chat-members");
 		socket.connect();
 	});
+	// Generate an anonymous chat session. Saves the user's anonymous ID, public key, and private key in the browser's local storage, and then redirects them to their newly generated chat session.
 	socket.on("generate-anonymous-session", function(data) {
 		if(!empty(data)) {
 			window.localStorage.setItem(data["conversation_id"] + "-anonymous-id", data["anonymous_id"]);
@@ -17,6 +19,7 @@ document.addEventListener("DOMContentLoaded", function(e) {
 			socket.emit("generate-anonymous-session");
 		}
 	});
+	// Generates credentials (anonymous ID, public key, and private key). This is used when a user joins an existing chat.
 	socket.on("generate-credentials", function(data) {
 		if(!empty(data)) {
 			window.localStorage.setItem(data["conversation_id"] + "-anonymous-id", data["anonymous_id"]);
@@ -28,6 +31,7 @@ document.addEventListener("DOMContentLoaded", function(e) {
 			socket.emit("generate-anonymous-session");
 		}
 	});
+	// Fetch and store chat members in local storage.
 	socket.on("fetch-chat-members", function(data) {
 		if(Object.keys(data.members).length >= 2) {
 			document.getElementsByClassName("loading-overlay")[0].style.display = "none";
@@ -37,6 +41,7 @@ document.addEventListener("DOMContentLoaded", function(e) {
 		}
 		update_credentials();
 	});
+	// Every time a user joins a chat, their details are added 
 	socket.on("new-anonymous-user", function(data) {
 		if(!empty(data)) {
 			if(!empty(get_chat_members())) {
@@ -54,6 +59,7 @@ document.addEventListener("DOMContentLoaded", function(e) {
 		}
 		socket.emit("fetch-chat-members", { conversation_id:get_conversation_id() });
 	});
+	// Adding new message bubbles.
 	socket.on("new-anonymous-message", function(data) {
 		var list = document.getElementsByClassName("messages-list")[0];
 		var time = hour(data.id.substring(0, 10));
@@ -70,9 +76,11 @@ document.addEventListener("DOMContentLoaded", function(e) {
 		}
 		list.scrollTop = list.scrollHeight;
 	});
+	// Logging out.
 	socket.on("logout", function() {
 		logout();
 	});
+	// Allowing the server to send notifications to the user.
 	socket.on("notify", function(data) {
 		notify(data.title, data.text, data.color, data.duration, data.args);
 	});

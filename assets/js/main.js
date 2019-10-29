@@ -1,4 +1,5 @@
 document.addEventListener("DOMContentLoaded", function(e) {
+	// Connect to Socket.IO.
 	var socket = io.connect(window.location.href, { reconnection:true, reconnectionDelay:1000, reconnectionDelayMax:5000, reconnectionAttempts:99999 });
 	var global_settings;
 	initialize();
@@ -6,11 +7,14 @@ document.addEventListener("DOMContentLoaded", function(e) {
 	socket.on("disconnect", function() {
 		socket.connect();
 	});
+	// Populates the conversation list.
 	socket.on("list-conversations", function(data) {
+		// If there are no conversations, the start page is shown.
 		if(empty(data["content"])) {
 			show_start();
 		}
 		else {
+			// Checks to see if a conversation is already open.
 			if(document.getElementsByClassName("conversation-wrapper active").length > 0) {
 				var active_id = document.getElementsByClassName("conversation-wrapper active")[0].id;
 				var active_exists = true;
@@ -20,6 +24,7 @@ document.addEventListener("DOMContentLoaded", function(e) {
 			}
 			var conversations = data.content;
 			var keys = Object.keys(conversations);
+			// Empties the conversation list.
 			document.getElementsByClassName("conversation-list")[0].innerHTML = "";
 			for(i = 0; i < keys.length; i++) {
 				var id = keys[i];
@@ -34,6 +39,7 @@ document.addEventListener("DOMContentLoaded", function(e) {
 				else {
 					var unread = "";
 				}
+				// Every conversation file has a last modified time.
 				if(empty(time_modified)) {
 					socket.emit("list-conversations");
 				}
@@ -44,6 +50,7 @@ document.addEventListener("DOMContentLoaded", function(e) {
 			if(active_exists) {
 				document.getElementById(active_id).classList.add("active");
 			}
+			// If the user has a conversation open, then it's reopened once the conversation list is fetched.
 			if(!empty(window.localStorage.getItem("active-conversation"))) {
 				var active_id = window.localStorage.getItem("active-conversation");
 				if(document.getElementById(active_id)) {
@@ -56,24 +63,31 @@ document.addEventListener("DOMContentLoaded", function(e) {
 			document.getElementsByClassName("navbar-item title")[0].style.display = "inline-block";
 			document.getElementsByClassName("navbar-item compose")[0].style.display = "inline-block";
 			sort_conversation_list();
+			// Allows the server to pass a conversation ID to the client side script so that it'll be opened.
 			if(!empty(data.id) && !empty(document.getElementById(data.id))) {
 				document.getElementById(data.id).click();
 			}
 		}
 	});
+	// Handles the addition of new chat bubbles and messages.
 	socket.on("new-message", function(data) {
 		var list = document.getElementsByClassName("messages-list")[0];
 		var username = document.getElementsByClassName("account-username")[0].textContent;
+		// Every message has an ID. The ID is made up of the UNIX timestamp at the time the message was sent, and a random number. The first ten characters would always be said timestamp.
 		var time = hour(data.id.substring(0, 10));
 		var recipient_public_key = get_recipient_public_key();
 		var public_key = get_public_key();
 		var private_key = get_private_key();
+		// Checks to make sure a conversation is actually open before adding bubbles.
 		if(!empty(document.getElementsByClassName("conversation-wrapper active")) && document.getElementsByClassName("conversation-wrapper active")[0].id == data.conversation_id) {
+			// The server can relay the message. The client side script checks to make sure it doesn't add duplicate bubbles.
 			if(data.relay != "true") {
+				// If the message was sent from the current user.
 				if(data.from.toLowerCase() == username.toLowerCase()) {
 					var from = "me";
 					list.innerHTML += '<div class="chat-bubble-wrapper ' + from + ' noselect"><div class="chat-bubble" id="' + data.id + '"><button class="chat-bubble-time">' + time + '</button><span>' + decrypt_text(data.sender, private_key) + '</span></div></div>';
 				}
+				// If the message was sent by the other party.
 				else {
 					var from = "others";
 					list.innerHTML += '<div class="chat-bubble-wrapper ' + from + ' noselect"><div class="chat-bubble" id="' + data.id + '"><span>' + decrypt_text(data.recipient, private_key) + '</span><button class="chat-bubble-time">' + time + '</button></div></div>';
@@ -86,6 +100,7 @@ document.addEventListener("DOMContentLoaded", function(e) {
 			}
 		}
 		else {
+			// If the message wasn't sent from the current user, and the message is a relay, then the current user is notified of the other person having messaged them.
 			if(data.from.toLowerCase() != username.toLowerCase() && data.relay == "true") {
 				if(!empty(global_settings)) {
 					if(JSON.parse(global_settings)["message-notification"] == "enabled") {
@@ -94,27 +109,32 @@ document.addEventListener("DOMContentLoaded", function(e) {
 				}
 			}
 		}
+		// Updates the conversation's last modified time.
 		if(!empty(data.conversation_id) && document.getElementById(data.conversation_id)) {
 			document.getElementById(data.conversation_id).setAttribute("data-modified", data.conversation_modified);
 			if(!document.getElementById(data.conversation_id).classList.contains("active")) {
 				socket.emit("unread-message", { id:data.conversation_id });
 			}
 		}
+		// If no last modified timestamp is found, then the conversations are refetched.
 		else {
 			socket.emit("list-conversations");
 		}
 		sort_conversation_list();
 	});
+	// The server can tell the client side script to remove a chat bubble element in case it has been deleted on the server-side.
 	socket.on("delete-message", function(data) {
 		document.getElementById(data.id).parentNode.remove();
 		document.getElementById(data.conversation_id).setAttribute("data-modified", data.conversation_modified);
 		sort_conversation_list();
 	});
+	// Mark a conversation as having an unread message.
 	socket.on("unread-message", function(data) {
 		if(!empty(data.conversation_id) && document.getElementById(data.conversation_id) && !document.getElementById(data.conversation_id).classList.contains("active")) {
 			document.getElementById(data.conversation_id).classList.add("unread");
 		}
 	});
+	// Fetch the content of a conversation.
 	socket.on("fetch-conversation", function(data) {
 		var list = document.getElementsByClassName("messages-list")[0];
 		var username = document.getElementsByClassName("account-username")[0].textContent;
@@ -125,6 +145,7 @@ document.addEventListener("DOMContentLoaded", function(e) {
 		document.getElementsByClassName("loading-overlay")[0].style.display = "none";
 		document.getElementsByClassName("navbar-item recipient")[0].style.display = "block";
 		document.getElementsByClassName("navbar-item recipient")[0].textContent = recipient;
+		// Mark the conversation as read.
 		if(document.getElementById(data.conversation_id)) {
 			document.getElementById(data.conversation_id).classList.remove("unread");
 		}
@@ -148,17 +169,21 @@ document.addEventListener("DOMContentLoaded", function(e) {
 				}
 				list.scrollTop = list.scrollHeight;
 			}
+			// Save the recipient's public key in the browser's local storage.
 			window.localStorage.setItem("recipient-public-key", data.recipient_public_key);
 		}
 		adjust_to_screen();
 		close_messages_search();
 	});
+	// Fetch details about a specific conversation.
 	socket.on("fetch-conversation-info", function(data) {
 		open_popup(350, 400, "Information", '<span class="popup-label noselect">Username</span><span class="popup-text noselect">' + data.username + '</span><span class="popup-label noselect">Recipient</span><span class="popup-text noselect">' + data.recipient_username + '</span><span class="popup-label noselect">Conversation ID</span><span class="popup-text noselect">' + data.id + '</span><span class="popup-label noselect">Date Created</span><span class="popup-text noselect">' + data.created + '</span><span class="popup-label noselect">Date Modified</span><span class="popup-text noselect">' + data.modified + '</span><span class="popup-label noselect">File Size</span><span class="popup-text noselect">' + bytes_to_size(data.size) + '</span>');
 	});
+	// Fetch details about a specific message.
 	socket.on("fetch-message-info", function(data) {
 		open_popup(350, 340, "Information", '<span class="popup-label noselect">Conversation ID</span><span class="popup-text noselect">' + data.conversation + '</span><span class="popup-label noselect">Message ID</span><span class="popup-text noselect">' + data.message + '</span><span class="popup-label noselect">Date</span><span class="popup-text noselect">' + data.date + '</span><span class="popup-label noselect">Sender</span><span class="popup-text noselect">' + data.sender + '</span>');
 	});
+	// Refetch contacts.
 	socket.on("refetch-contacts", function() {
 		socket.emit("manage-contacts", { action:"fetch-contacts" });
 		for(i = 0; i < document.getElementsByClassName("contact-card contact").length; i++) {
@@ -168,6 +193,7 @@ document.addEventListener("DOMContentLoaded", function(e) {
 			document.getElementsByClassName("contact-card edit")[0].remove();
 		}
 	});
+	// Populates the contact list with contact cards.
 	socket.on("populate-contacts", function(data) {
 		document.getElementsByClassName("contacts-wrapper")[0].innerHTML = "";
 		var add_card = document.createElement("div");
@@ -268,21 +294,27 @@ document.addEventListener("DOMContentLoaded", function(e) {
 			}
 		}
 	});
+	// Save and apply settings.
 	socket.on("save-settings", function(data) {
 		apply_settings(data["settings"]);
 	});
+	// Refetch conversation list.
 	socket.on("refetch", function() {
 		socket.emit("list-conversations");
 	});
+	// Logout.
 	socket.on("logout", function() {
 		logout();
 	});
+	// Fetch settings after they've been reset.
 	socket.on("reset-settings", function() {
 		fetch_settings();
 	});
+	// Refresh the page.
 	socket.on("refresh", function() {
 		location.reload();
 	});
+	// The server can send notifications to the client.
 	socket.on("notify", function(data) {
 		var enabled = true;
 		if(!empty(data.args)) {
@@ -405,6 +437,7 @@ document.addEventListener("DOMContentLoaded", function(e) {
 			document.getElementById(id).click();
 		}
 	});
+	// Clicking a chat bubble opens a menu allowing the user to perform a number of actions on that specific message.
 	document.getElementsByClassName("messages-list")[0].addEventListener("click", function(e) {
 		if(e.target && e.target.classList.contains("chat-bubble")) {
 			var bubbles = document.getElementsByClassName("chat-bubble");
