@@ -13,6 +13,7 @@ const crypto = require("crypto");
 const crypto_js = require("crypto-js");
 const body_parser = require("body-parser");
 
+// Redis is used by Socket.IO to store data.
 const redis = require("redis");
 const redis_client = redis.createClient();
 const redis_store = require("connect-redis")(session);
@@ -36,6 +37,7 @@ app.use("/assets", express.static("assets"));
 app.use(body_parser.urlencoded({ extended: true }));
 app.use(body_parser.json());
 
+// The server's root directory. If the user is logged in, they'll see the main chat page, otherwise, they'll be shown the login page.
 app.get("/", function(req, res) {
 	if(req.session.logged_in) {
 		res.render("home", { username: req.session.username, });
@@ -44,6 +46,7 @@ app.get("/", function(req, res) {
 		res.render("login");
 	}
 });
+// Accessing the anonymous chat automatically logs out the user.
 app.get("/anonymous", function(req, res) {
 	req.session.logged_in = 0;
 	req.session.anonymous = 1;
@@ -51,24 +54,30 @@ app.get("/anonymous", function(req, res) {
 	req.session.username = "";
 	res.render("anonymous");
 });
+// To login, the user can send a POST request with their username and password to "/login".
 app.post("/login", function(req, res) {
 	var username = req.body.username;
 	var password = req.body.password;
 	if(!empty(username) && !empty(password)) {
+		// Gets the SHA256 hash of the user's username.
 		var username_hash = crypto.createHash("sha256").update(username.toLowerCase()).digest("hex");
 		var account_file = path.join(__dirname, "./data/accounts/" + username.toLowerCase() + ".txt");
 		var public_key_file = path.join(__dirname, "./data/keys/public/" + username_hash + ".txt");
 		var private_key_file = path.join(__dirname, "./data/keys/private/" + username_hash + ".txt");
+		// If the user's account file exists, it is opened, and its JSON content is parsed into an object.
 		if(fs.existsSync(account_file)) {
 			fs.readFile(account_file, { encoding:"utf-8" }, function(error, json) {
 				if(!error) {
 					if(!empty(json)) {
 						var account = JSON.parse(json);
+						// The user's password from the POST request is compared to their valid one that's encrypted using BCrypt, and stored on the server.
 						bcrypt.compare(password, account["password"], function(error, valid) {
+							// If the password is correct, the user is logged in, and their session variables are declared.
 							if(valid) {
 								req.session.logged_in = 1;
 								req.session.anonymous = 0;
 								req.session.username = account["username"];
+								// The user is then sent their public key, and private key (to be decrypted on the client side).
 								fs.readFile(private_key_file, { encoding:"utf-8" }, function(error, private_key) {
 									if(error) {
 										console.log(error);
@@ -104,24 +113,30 @@ app.post("/login", function(req, res) {
 		}
 	}
 });
+// To register, the user can send a POST request containing their username and password to "/register".
 app.post("/register", function(req, res) {
 	var username = req.body.username;
 	var password = req.body.password;
 	if(!empty(username) && !empty(password)) {
+		// A hash of the user's username and password are created.
 		var username_hash = crypto.createHash("sha256").update(username.toLowerCase()).digest("hex");
 		var password_hash = crypto.createHash("sha512").update(password).digest("hex");
 		var account_file = path.join(__dirname, "./data/accounts/" + username.toLowerCase() + ".txt");
 		var public_key_file = path.join(__dirname, "./data/keys/public/" + username_hash + ".txt");
 		var private_key_file = path.join(__dirname, "./data/keys/private/" + username_hash + ".txt");
+		// If an account file under the user's username already exists, the user is informed of it.
 		if(fs.existsSync(account_file)) {
 			res.send("Account already exists.");
 		}
 		else {
+			// Only letters and numbers are allowed in usernames.
 			if(alphanumeric(username)) {
+				// Usernames have to be less than 14 characters long.
 				if(username.length > 14) {
 					res.send("Username is too long.");
 				}
 				else {
+					// The user's password is hashed using BCrypt.
 					bcrypt.hash(password, 10, function(error, hash) {
 						if(error) {
 							console.log(error);
@@ -142,6 +157,7 @@ app.post("/register", function(req, res) {
 													console.log(error);
 												}
 												else {
+													// A public key and private key are generated for the user.
 													crypto.generateKeyPair("rsa", {
 														modulusLength:2048,
 														publicKeyEncoding: {
@@ -157,6 +173,7 @@ app.post("/register", function(req, res) {
 															console.log(error);
 														}
 														else {
+															// The user's private key is encrypted using the hash of their password as the encryption key.
 															var private_key_encrypted = aes_encrypt(private_key, password_hash);
 															fs.writeFile(public_key_file, public_key, function(error) {
 																if(error) {
@@ -168,9 +185,11 @@ app.post("/register", function(req, res) {
 																			console.log(error);
 																		}
 																		else {
+																			// If the public key and private key files exist, then the registration is complete.
 																			if(fs.existsSync(public_key_file) && fs.existsSync(private_key_file) && !empty(public_key) && !empty(private_key_encrypted)) {
 																				res.send("done");
 																			}
+																			// If the aforementioned files do not exist, then all the previously created files are deleted, and the user is told to try again.
 																			else {
 																				fs.unlink(account_file, function(error) {
 																					if(error) {
@@ -216,6 +235,7 @@ app.post("/register", function(req, res) {
 		}
 	}
 });
+// The user can send a POST request to "/settings" to fetch their settings/preferences.
 app.post("/settings", function(req, res) {
 	if(req.session.logged_in) {
 		var username = req.session.username.toLowerCase();
@@ -237,6 +257,7 @@ app.post("/settings", function(req, res) {
 		}
 	}
 });
+// Logging out.
 app.post("/logout", function(req, res) {
 	req.session.logged_in = 0;
 	req.session.anonymous = 0;
@@ -244,26 +265,36 @@ app.post("/logout", function(req, res) {
 	req.session.username = "";
 	res.send("refresh");
 });
+// To get access to the session, Socket.IO uses a session middleware.
 io.use(function(socket, next) {
 	session_mware(socket.request, socket.request.res, next);
 });
+// An object containing a list of anonymous users' IDs.
 var anonymous_clients = new Object();
+// An object containing a list of conversation IDs and their participants' anonymous IDs.
 var anonymous_chats = new Object();
+// An object containing a list of normal users.
 var clients = new Object();
+// An object containing a list of normal chats and their participants.
 var current_chats = new Object();
 io.sockets.on("connection", function(socket) {
 	if(!empty(socket.request.session.username) && socket.request.session.logged_in && !socket.request.session.anonymous) {
+		// If the current_chats object already contains the user's username, then Socket.IO just connects to the chat the user's supposed to be connected to.
 		if(!empty(current_chats[socket.request.session.username.toLowerCase()])) {
 			socket.join(current_chats[socket.request.session.username.toLowerCase()]);
 		}
+		// The client object consists of the user's username, and their Socket ID. Since the Socket ID changes frequently, this is a way to always keep track of it.
 		var client = { [socket.request.session.username.toLowerCase()]:socket.id };
+		// If the user is found in the clients object, then their Socket ID is just updated.
 		if(socket.request.session.username.toLowerCase() in clients) {
 			clients[socket.request.session.username.toLowerCase()] = socket.id;
 		}
+		// If they aren't found in the clients object, then they're added to it.
 		else {
 			clients = Object.assign(clients, client);
 		}
 		var account_file = path.join(__dirname, "./data/accounts/" + socket.request.session.username.toLowerCase() + ".txt");
+		// Fetching a list of conversations that the user is a part of.
 		socket.on("list-conversations", function() {
 			var client = { [socket.request.session.username.toLowerCase()]:socket.id };
 			if(socket.request.session.username.toLowerCase() in clients) {
@@ -296,6 +327,7 @@ io.sockets.on("connection", function(socket) {
 									}
 									if(!fs.existsSync(path.join(__dirname, "./data/conversations/" + keys[i] + ".txt"))) {
 										delete account["conversations"][keys[i]];
+										// If the conversation ID stored in the user's account file doesn't actually have a corresponding file, then the user's account file is updated to reflect that fact.
 										var overwrite = true;
 									}
 								}
@@ -318,6 +350,7 @@ io.sockets.on("connection", function(socket) {
 				}
 			});
 		});
+		// Fetch the contents of a conversation.
 		socket.on("fetch-conversation", function(data) {
 			var client = { [socket.request.session.username.toLowerCase()]:socket.id };
 			if(socket.request.session.username.toLowerCase() in clients) {
@@ -344,17 +377,20 @@ io.sockets.on("connection", function(socket) {
 													console.log(error);
 												}
 												else {
+													// Get a SHA256 hash of the conversation ID, and then join it using Socket.IO.
 													var hash = crypto.createHash("sha256").update(data.id).digest("base64");
 													delete current_chats[socket.request.session.username.toLowerCase()];
 													var current_chat = { [socket.request.session.username.toLowerCase()]:hash };
 													Object.assign(current_chats, current_chat);
 													socket.join(hash);
 													if(!empty(json)) {
+														// To ensure that HTML elements cannot be added to messages.
 														var formatted = json.replace_all("<", "&lt;").replace_all(">", "&gt;");
 														var messages = JSON.parse(formatted);
 														var output = new Object();
 														var keys = Object.keys(messages);
 														for(i = 0; i < keys.length; i++) {
+															// When a user deletes a message, it is only hidden for them, until the other user deletes it as well, in which case it'll get deleted from the server.
 															if(messages[keys[i]]["visibility"][socket.request.session.username.toLowerCase()] == true) {
 																var message = { [keys[i]]:messages[keys[i]] };
 																Object.assign(output, message);
@@ -365,6 +401,7 @@ io.sockets.on("connection", function(socket) {
 													else {
 														io.to(clients[socket.request.session.username.toLowerCase()]).emit("fetch-conversation", { recipient:recipient_name, conversation_id:data.id, recipient_public_key:recipient_public_key });
 													}
+													// When the user fetches the content of a conversation, that conversation no longer contains an "unread" message.
 													account["conversations"][data.id]["unread"] = false;
 													if(!empty(account)) {
 														fs.writeFile(account_file, JSON.stringify(account), function(error) {
@@ -399,6 +436,7 @@ io.sockets.on("connection", function(socket) {
 				});
 			}
 		});
+		// Close a conversation and leave it using Socket.IO.
 		socket.on("close-conversation", function(data) {
 			var client = { [socket.request.session.username.toLowerCase()]:socket.id };
 			if(socket.request.session.username.toLowerCase() in clients) {
@@ -413,6 +451,7 @@ io.sockets.on("connection", function(socket) {
 				socket.leave(hash);
 			}
 		});
+		// Create a conversation.
 		socket.on("create-conversation", function(data) {
 			var client = { [socket.request.session.username.toLowerCase()]:socket.id };
 			if(socket.request.session.username.toLowerCase() in clients) {
@@ -549,6 +588,7 @@ io.sockets.on("connection", function(socket) {
 				}
 			}
 		});
+		// Process a new message.
 		socket.on("new-message", function(data) {
 			var client = { [socket.request.session.username.toLowerCase()]:socket.id };
 			if(socket.request.session.username.toLowerCase() in clients) {
@@ -583,9 +623,11 @@ io.sockets.on("connection", function(socket) {
 									else {
 										if(!empty(json)) {
 											var recipient_settings = JSON.parse(json);
+											// If the recipient of the message has their privacy options set to allow anyone to message them.
 											if(recipient_settings["starting-conversations"] == "anybody") {
 												new_message();
 											}
+											// If only contacts can message them.
 											else if(recipient_settings["starting-conversations"] == "contacts") {
 												fs.readFile(recipient_contacts_file, { encoding:"utf-8" }, function(error, json) {
 													if(error) {
@@ -619,10 +661,12 @@ io.sockets.on("connection", function(socket) {
 													}
 												});
 											}
+											// If nobody can message them.
 											else {
 												io.to(clients[socket.request.session.username.toLowerCase()]).emit("notify", { title:"Error", text:"You can't message that user.", color:"rgb(120,120,250)", duration:4000 });
 											}
 											function new_message() {
+												// When a conversation is deleted by a user, it's only hidden from them, until the other user also deletes it, in which case it's deleted from the server. If only one of them has deleted it, sending a message in that conversation would "unhide" it from the user who deleted it. Past messages won't be visible though.
 												if(!empty(account["conversations"][data.id])) {
 													if(account["conversations"][data.id]["visibility"] != true) {
 														account["conversations"][data.id]["visibility"] = true;
@@ -647,6 +691,7 @@ io.sockets.on("connection", function(socket) {
 															while(id in messages) {
 																var id = generate_id();
 															}
+															// Each message's content is repeated twice. It's encrypted once with the sender's public key, so that they can decrypt it for themselves (since they don't have access to the recipient's private key), and once again with the recipient's public key so that the recipient can decrypt it.
 															var message = { [id]: { "from":socket.request.session.username, "text":{[socket.request.session.username.toLowerCase()]:data.text.sender, [recipient_username.toLowerCase()]:data.text.recipient}, "visibility":{ [socket.request.session.username.toLowerCase()]:true, [recipient_username]:true }}};
 															Object.assign(messages, message);
 															if(!empty(messages)) {
@@ -1104,6 +1149,7 @@ io.sockets.on("connection", function(socket) {
 																console.log(error);
 															}
 															else {
+																// The user's old password hash is used to decrypt their private key, and then re-encrypt it with their new password's hash. This allows them to still be able to read old conversations.
 																var current_private_key = aes_decrypt(current_private_key_encrypted, current_password_hash);
 																var new_private_key_encrypted = aes_encrypt(current_private_key, new_password_hash);
 																fs.writeFile(private_key_file, new_private_key_encrypted, function(error) {
@@ -1268,12 +1314,14 @@ io.sockets.on("connection", function(socket) {
 					console.log(error);
 				}
 				else {
+					// Two chats can't have the same ID.
 					var conversation_id = generate_token();
 					var conversation_id_hash = crypto.createHash("sha256").update(conversation_id).digest("hex");
 					while(conversation_id in anonymous_chats || fs.existsSync(path.join(__dirname, "./data/anonymous/" + conversation_id_hash + ".txt"))) {
 						conversation_id = generate_token();
 						conversation_id_hash = crypto.createHash("sha256").update(conversation_id).digest("hex");
 					}
+					// Two users can't have the same ID.
 					var anonymous_id = generate_token();
 					while(anonymous_id in anonymous_clients) {
 						anonymous_id = generate_token();
@@ -1444,34 +1492,43 @@ io.sockets.on("connection", function(socket) {
 	}
 });
 
+// AES encrypt.
 function aes_encrypt(plaintext, password) {
 	return crypto_js.AES.encrypt(plaintext, password);
 }
+// AES decrypt.
 function aes_decrypt(encrypted, password) {
 	var bytes  = crypto_js.AES.decrypt(encrypted.toString(), password);
 	return bytes.toString(crypto_js.enc.Utf8);
 }
+// Get the key of a value in an object.
 function get_key(object, value) {
 	return Object.keys(object).find(key => object[key] === value);
 }
+// Generate a random integer.
 function random_int(min, max) {
 	return Math.floor(Math.random() * (max - min) + min);
 }
+// Generate an ID.
 function generate_id() {
 	return epoch() + "-" + random_int(10000000, 99999999);
 }
+// Generate a token.
 function generate_token() {
 	var salt1 = bcrypt.genSaltSync();
 	var salt2 = bcrypt.genSaltSync();
 	return bcrypt.hashSync(salt1 + salt2, 10);
 }
+// Check if a string contains only letters and numbers.
 function alphanumeric(string) {
 	return string.match(/^[a-z0-9]+$/i);
 }
+// Convert a date to a timestamp.
 function to_epoch(date){
 	var date = Date.parse(date);
 	return date / 1000;
 }
+// Convert a timestamp to a full date in a format like "3rd of January, 2019 at 3:45 PM".
 function full_date(timestamp) {
 	var date = new Date(timestamp * 1000);
 	var months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
@@ -1485,6 +1542,7 @@ function full_date(timestamp) {
 	var hour = hour ? hour : 12; // Hour "0" would be "12".
 	return day + nth(day) + " of " + month + ", " + year + " at " + hour + ":" + minute.substr(-2) + " " + ampm;
 }
+// Convert a timestamp to a date in the format DD / MM / YYYY.
 function date(timestamp) {
 	var date = new Date(timestamp * 1000);
 	var year = date.getFullYear();
@@ -1492,6 +1550,7 @@ function date(timestamp) {
 	var day = date.getDate();
 	return day + "/" + month + "/" + year;
 }
+// Get the hour from a timestamp.
 function hour(timestamp) {
 	var date = new Date(timestamp * 1000);
 	var hour = date.getHours();
@@ -1501,14 +1560,16 @@ function hour(timestamp) {
 	var hour = hour ? hour : 12; // Hour "0" would be "12".
 	return hour + ":" + minute.substr(-2) + " " + ampm;
 }
+// Get the current UNIX timestamp.
 function epoch() {
 	var date = new Date();
 	var time = Math.round(date.getTime() / 1000);
 	return time;
 }
+// Get the ordinal number suffix.
 function nth(d) {
 	if(d > 3 && d < 21) {
-		return 'th';
+		return "th";
 	}
 	switch(d % 10) {
 		case 1:  return "st";
@@ -1517,12 +1578,14 @@ function nth(d) {
 		default: return "th";
 	}
 }
+// Check if a string is empty.
 function empty(text) {
 	if(text != "" && text != null && typeof text != "undefined") {
 		return false;	
 	}
 	return true;
 }
+// Replace all instances of a string.
 String.prototype.replace_all = function(str1, str2, ignore) {
 	return this.replace(new RegExp(str1.replace(/([\/\,\!\\\^\$\{\}\[\]\(\)\.\*\+\?\|\<\>\-\&])/g,"\\$&"),(ignore?"gi":"g")),(typeof(str2)=="string")?str2.replace(/\$/g,"$$$$"):str2);
 }
