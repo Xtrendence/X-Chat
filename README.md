@@ -10,11 +10,3 @@ The normal chat is more like your generic chat application. Messages are still e
 There might be some bugs or some unexpected behavior, but this is to be expected, this is, after all, my first NodeJS project. If you try to break the app, you'll very likely succeed. There aren't as many validation checks and such as I'd like, but there are enough to protect user's accounts and conversations. I apologize in advance if anything does go wrong though.
 
 ![X:/Chat](https://www.xtrendence.com/portfolio/projects/x-chat/thumbnail.jpg)
-
-### To Do
-
-- [X] Add comments to the code.
-
-- [ ] Add the option to store anonymous chat messages in local storage.
-
-- [ ] Create an ElectronJS version of X:/Chat.
