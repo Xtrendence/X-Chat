@@ -139,6 +139,9 @@ button, input {
 	scroll-behavior:smooth;
 	-webkit-overflow-scrolling:touch;
 }
+.messages-list::-webkit-scrollbar {
+	display:none;
+}
 .chat-bubble-wrapper {
 	font-size:0;
 	display:block;
