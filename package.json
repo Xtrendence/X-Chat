@@ -4,7 +4,8 @@
   "description": "An end-to-end encrypted chat application.",
   "main": "server.js",
   "scripts": {
-    "test": "npm test"
+    "test": "npm test",
+    "build": "build.js"
   },
   "author": "Xtrendence",
   "license": "ISC",
