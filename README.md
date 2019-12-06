@@ -1,4 +1,5 @@
-# X-Chat
+# X:/Chat
+
 X:/Chat is a web application that uses HTML, CSS, and JavaScript on the front-end, and NodeJS on the back-end. It allows users to communicate with one another in a secure manner (although I'm new to NodeJS, and cannot guarantee said security).
 
 JavaScript and local storage are absolutely **mandatory** for the web app to function. Local storage is used to store public keys, private keys, settings, and a whole lot more.
