@@ -1,5 +1,7 @@
 # X:/Chat
 
+## Cryptographic algorithms and functions used in this project haven't been fully reviewed, so don't use this for any seriously sensitive data. This was also my first Node.js project, so at the time I was winging it. As a result, the application might have bugs or security issues. 
+
 X:/Chat is a web application that uses HTML, CSS, and JavaScript on the front-end, and Node.js on the back-end. It allows users to communicate with one another in a secure manner (although I'm new to Node.js, and cannot guarantee said security).
 
 JavaScript and local storage are absolutely **mandatory** for the web app to function. Local storage is used to store public keys, private keys, settings, and a whole lot more.
