@@ -199,8 +199,7 @@ document.addEventListener("DOMContentLoaded", function(e) {
 	}
 	// Encrypt text using AES-256.
 	function aes_encrypt(plaintext, password) {
-		let encrypted = CryptoJS.AES.encrypt(plaintext, password);
-		delete encrypted.key;
+		let encrypted = CryptoJS.AES.encrypt(plaintext, password).toString();
 		return encrypted;
 	}
 	// Decrypt text using AES-256.

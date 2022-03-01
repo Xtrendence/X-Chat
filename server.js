@@ -1,4 +1,4 @@
-const port = 80;
+const port = 5192;
 
 const express = require("express");
 const session = require("express-session");
@@ -1516,7 +1516,7 @@ function directory_check() {
 }
 // AES encrypt.
 function aes_encrypt(plaintext, password) {
-	return crypto_js.AES.encrypt(plaintext, password);
+	return crypto_js.AES.encrypt(plaintext, password).toString();
 }
 // AES decrypt.
 function aes_decrypt(encrypted, password) {
